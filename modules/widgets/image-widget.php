@@ -9,8 +9,11 @@
 /**
 * Register the widget for use in Appearance -> Widgets
 */
-add_action( 'widgets_init', 'jetpack_image_widget_init' );
+add_action( 'widgets_init', 'jetpack_image_widget_init', 11 );
 function jetpack_image_widget_init() {
+	if ( class_exists( 'WP_Widget_Media_Image' ) && Jetpack_Options::get_option( 'image_widget_migration' ) ) {
+		return;
+	}
 	register_widget( 'Jetpack_Image_Widget' );
 }
 
@@ -69,14 +72,7 @@ class Jetpack_Image_Widget extends WP_Widget {
 
 		if ( '' != $instance['img_url'] ) {
 
-			$image_url = Jetpack::is_module_active( 'photon' )
-				? jetpack_photon_url( $instance['img_url'], array(
-                                        'w' => $instance['img_width'],
-                                        'h' => $instance['img_height'],
-                                  ) )
-				: $instance['img_url'];
-
-			$output = '<img src="' . esc_url( $image_url ) . '" ';
+			$output = '<img src="' . esc_url( $instance['img_url'] ) . '" ';
 
 			if ( '' != $instance['alt_text'] ) {
 				$output .= 'alt="' . esc_attr( $instance['alt_text'] ) .'" ';
@@ -94,6 +90,11 @@ class Jetpack_Image_Widget extends WP_Widget {
 				$output .= 'height="' . esc_attr( $instance['img_height'] ) .'" ';
 			}
 			$output .= '/>';
+
+			if ( class_exists( 'Jetpack_Photon' ) && Jetpack::is_module_active( 'photon' ) ) {
+				$output = Jetpack_Photon::filter_the_content( $output );
+			}
+
 			if ( '' != $instance['link'] ) {
 				$target = ! empty( $instance['link_target_blank'] )
 					? 'target="_blank"'
