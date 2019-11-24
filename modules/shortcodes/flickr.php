@@ -69,13 +69,7 @@ function flickr_embed_to_shortcode( $content ) {
 				continue;
 			}
 
-			$photo_id = preg_replace( '#[^A-Za-z0-9_./@+-]+#', '', $flashvars['photo_id'] );
-
-			if ( ! strlen( $photo_id ) ) {
-				continue;
-			}
-
-			$code_atts = array( 'video' => $photo_id );
+			$code_atts = array( 'video' => $flashvars['photo_id'] );
 
 			if (
 				isset( $flashvars['flickr_show_info_box'] )
@@ -85,10 +79,7 @@ function flickr_embed_to_shortcode( $content ) {
 			}
 
 			if ( ! empty( $flashvars['photo_secret'] ) ) {
-				$photo_secret = preg_replace( '#[^A-Za-z0-9_./@+-]+#', '', $flashvars['photo_secret'] );
-				if ( strlen( $photo_secret ) ) {
-					$code_atts['secret'] = $photo_secret;
-				}
+				$code_atts['secret'] = $flashvars['photo_secret'];
 			}
 
 			if ( ! empty( $params['width']['value'] ) ) {
