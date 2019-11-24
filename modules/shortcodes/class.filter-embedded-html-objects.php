@@ -222,22 +222,17 @@ class Filter_Embedded_HTML_Objects {
 	 * @param array $matches Array of matches.
 	 */
 	private static function dispatch_entities( $matches ) {
-		$orig_html       = $matches[0];
-		$decoded_matches = array( html_entity_decode( $matches[0] ) );
+		$matches[0] = html_entity_decode( $matches[0] );
 
-		return self::dispatch( $decoded_matches, $orig_html );
+		return self::dispatch( $matches );
 	}
 
 	/**
 	 * Filter and replace HTML element.
 	 *
-	 * @param array  $matches Array of matches.
-	 * @param string $orig_html Original html. Returned if no results are found via $matches processing.
+	 * @param array $matches Array of matches.
 	 */
-	private static function dispatch( $matches, $orig_html = null ) {
-		if ( null === $orig_html ) {
-			$orig_html = $matches[0];
-		}
+	private static function dispatch( $matches ) {
 		$html  = preg_replace( '%&#0*58;//%', '://', $matches[0] );
 		$attrs = self::get_attrs( $html );
 		if ( isset( $attrs['src'] ) ) {
@@ -258,7 +253,7 @@ class Filter_Embedded_HTML_Objects {
 				}
 			}
 
-			return $orig_html;
+			return $matches[0];
 		}
 
 		$src = trim( $src );
@@ -304,11 +299,11 @@ class Filter_Embedded_HTML_Objects {
 		// Keep the failed match so we can later replace it with a link,
 		// but return the original content to give others a chance too.
 		self::$failed_embeds[] = array(
-			'match' => $orig_html,
+			'match' => $matches[0],
 			'src'   => esc_url( $src ),
 		);
 
-		return $orig_html;
+		return $matches[0];
 	}
 
 	/**
