@@ -96,6 +96,14 @@ There are opportunities for developers at all levels to contribute. [Learn more 
 
 == Changelog ==
 
+= 8.2.0.1 =
+
+* Release date: February 14, 2020
+
+**Bug fixes**
+
+* Synchronization: address missing function within Full Sync needed for sync/close endpoint.
+
 = 8.2 =
 
 * Release date: February 11, 2020
