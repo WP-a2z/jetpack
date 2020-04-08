@@ -758,15 +758,6 @@ __( "Daily Backups", "jetpack" ), // _inc/client/plans/single-product-backup/ind
 __( "Real-Time Backups", "jetpack" ), // _inc/client/plans/single-product-backup/index.jsx:44
 __( "Daily Backups", "jetpack" ), // _inc/client/plans/single-product-backup/index.jsx:58
 __( "Real-Time Backups", "jetpack" ), // _inc/client/plans/single-product-backup/index.jsx:64
-__( "Up to 100 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:32
-__( "Up to 1,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:34
-__( "Up to 10,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:36
-__( "Up to 100,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:38
-__( "Up to 1,000,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:40
-__( "Up to %(tierMaximumRecords)s records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:43
-__( "Learn more", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:87
-_n( "Your current site record size: %s record", "Your current site record size: %s records", 1, "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:91
-__( "Upgrade to Jetpack Search", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:122
 __( "You would save {{savings /}} by paying yearly", "jetpack" ), // _inc/client/plans/single-product-components/product-savings.jsx:33
 __( "You are saving {{savings /}} by paying yearly", "jetpack" ), // _inc/client/plans/single-product-components/product-savings.jsx:34
 __( "Up to %(percent)d%% off!", "jetpack" ), // _inc/client/plans/single-product-components/promo-nudge.jsx:16
@@ -776,6 +767,15 @@ __( "Included in your {{planLink}}Premium Plan{{/planLink}}", "jetpack" ), // _i
 __( "Included in your {{planLink}}Professional Plan{{/planLink}}", "jetpack" ), // _inc/client/plans/single-product-components/purchased-product-card.jsx:89
 /* translators: Button to purchase product upgrade. %(name)s is the product name. */
 __( "Upgrade to %(name)s", "jetpack" ), // _inc/client/plans/single-product-components/upgrade-button.jsx:21
+__( "Up to 100 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:32
+__( "Up to 1,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:34
+__( "Up to 10,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:36
+__( "Up to 100,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:38
+__( "Up to 1,000,000 records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:40
+__( "Up to %(tierMaximumRecords)s records", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:43
+__( "Learn more", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:87
+_n( "Your current site record size: %s record", "Your current site record size: %s records", 1, "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:91
+__( "Upgrade to Jetpack Search", "jetpack" ), // _inc/client/plans/single-product-search/index.jsx:122
 __( "Verifying…", "jetpack" ), // _inc/client/traffic/verification-services/google.jsx:79
 __( "Site failed to verify: %(error)s", "jetpack" ), // _inc/client/traffic/verification-services/google.jsx:101
 __( "Google", "jetpack" ), // _inc/client/traffic/verification-services/google.jsx:187
