@@ -5,7 +5,7 @@
  * @package automattic/jetpack-autoloader
  */
 
-namespace Automattic\Jetpack\Autoloader\jp00df7515401e64ea7647b7ca490bf0d1;
+namespace Automattic\Jetpack\Autoloader\jpf2d0d50b43fdfff1554c2343c2d42a4b;
 
  // phpcs:ignore
 
@@ -65,7 +65,8 @@ class Plugins_Handler {
 	 * @param string $plugin_slug The plugin slug.
 	 */
 	private function create_plugin_path( $plugin_slug ) {
-		return trailingslashit( WP_PLUGIN_DIR ) . substr( $plugin_slug, 0, strrpos( $plugin_slug, '/' ) );
+		$plugin_dir = str_replace( '\\', '/', WP_PLUGIN_DIR );
+		return trailingslashit( $plugin_dir ) . substr( $plugin_slug, 0, strrpos( $plugin_slug, '/' ) );
 	}
 
 	/**
@@ -150,7 +151,7 @@ class Plugins_Handler {
 	 * @return string The path of the current plugin.
 	 */
 	public function get_current_plugin_path() {
-		$vendor_path = dirname( __FILE__ );
+		$vendor_path = str_replace( '\\', '/', dirname( __FILE__ ) );
 		// Path to the plugin's folder (the parent of the vendor folder).
 		return substr( $vendor_path, 0, strrpos( $vendor_path, '/' ) );
 	}
