@@ -15,7 +15,7 @@ return array(
 		'path'    => $vendorDir . '/automattic/jetpack-autoloader/src/CustomAutoloaderPlugin.php'
 	),
 	'Automattic\\Jetpack\\Plugin\\Tracking' => array(
-		'version' => 'dev-branch-8.7',
+		'version' => 'dev-branch-8.8translations',
 		'path'    => $baseDir . '/src/class-tracking.php'
 	),
 	'Automattic\\Jetpack\\Sync\\Defaults' => array(
