@@ -4,10 +4,12 @@ use Automattic\Jetpack\Assets\Logo as Jetpack_Logo;
 use Automattic\Jetpack\Config;
 use Automattic\Jetpack\Connection\Client;
 use Automattic\Jetpack\Connection\Manager as Connection_Manager;
+use Automattic\Jetpack\Connection\Nonce_Handler;
 use Automattic\Jetpack\Connection\Utils as Connection_Utils;
 use Automattic\Jetpack\Connection\Plugin_Storage as Connection_Plugin_Storage;
 use Automattic\Jetpack\Connection\Rest_Authentication as Connection_Rest_Authentication;
 use Automattic\Jetpack\Constants;
+use Automattic\Jetpack\Licensing;
 use Automattic\Jetpack\Partner;
 use Automattic\Jetpack\Roles;
 use Automattic\Jetpack\Status;
@@ -505,6 +507,9 @@ class Jetpack {
 						array( __CLASS__, 'upgrade_on_load' )
 					);
 				}
+
+				// Upgrade to Jetpack 9.0.0, cleaning up nonces during runtime.
+				wp_clear_scheduled_hook( 'jetpack_clean_nonces' );
 			}
 		}
 	}
@@ -780,6 +785,12 @@ class Jetpack {
 		add_filter( 'jetpack_token_processing_url', array( __CLASS__, 'filter_connect_processing_url' ) );
 		add_filter( 'jetpack_token_redirect_url', array( __CLASS__, 'filter_connect_redirect_url' ) );
 		add_filter( 'jetpack_token_request_body', array( __CLASS__, 'filter_token_request_body' ) );
+
+		// Actions for successful reconnect.
+		add_action( 'jetpack_reconnection_completed', array( $this, 'reconnection_completed' ) );
+
+		// Actions for licensing.
+		Licensing::instance()->initialize();
 	}
 
 	/**
@@ -3295,9 +3306,13 @@ p {
 	 * @static
 	 */
 	public static function disconnect( $update_activated_state = true ) {
+		// The hook is not being set since Jetpack 9.0.0,
+		// but we're removing it just in case it wasn't properly cleaned up after the plugin update.
 		wp_clear_scheduled_hook( 'jetpack_clean_nonces' );
+
+		Nonce_Handler::clean_all();
+
 		$connection = self::connection();
-		$connection->clean_nonces( true );
 
 		// If the site is in an IDC because sync is not allowed,
 		// let's make sure to not disconnect the production site.
@@ -4944,6 +4959,17 @@ endif;
 	}
 
 	/**
+	 * This action fires at the end of the REST_Connector connection_reconnect method when the
+	 * reconnect process is completed.
+	 * Note that this currently only happens when we don't need the user to re-authorize
+	 * their WP.com account, eg in cases where we are restoring a connection with
+	 * unhealthy blog token.
+	 */
+	public static function reconnection_completed() {
+		self::state( 'message', 'reconnection_completed' );
+	}
+
+	/**
 	 * Get our assumed site creation date.
 	 * Calculated based on the earlier date of either:
 	 * - Earliest admin user registration date.
@@ -5549,25 +5575,6 @@ endif;
 	}
 
 	/**
-	 * Add our nonce to this request.
-	 *
-	 * @deprecated since 7.7.0
-	 * @see Automattic\Jetpack\Connection\Manager::add_nonce()
-	 *
-	 * @param int    $timestamp Timestamp of the request.
-	 * @param string $nonce     Nonce string.
-	 */
-	public function add_nonce( $timestamp, $nonce ) {
-		_deprecated_function( __METHOD__, 'jetpack-7.7', 'Automattic\\Jetpack\\Connection\\Manager::add_nonce' );
-
-		if ( ! $this->connection_manager ) {
-			$this->connection_manager = new Connection_Manager();
-		}
-
-		return $this->connection_manager->add_nonce( $timestamp, $nonce );
-	}
-
-	/**
 	 * In some setups, $HTTP_RAW_POST_DATA can be emptied during some IXR_Server paths since it is passed by reference to various methods.
 	 * Capture it here so we can verify the signature later.
 	 *
@@ -5642,19 +5649,6 @@ endif;
 		}
 
 		return $this->connection_manager->xmlrpc_options( $options );
-	}
-
-	/**
-	 * Cleans nonces that were saved when calling ::add_nonce.
-	 *
-	 * @deprecated since 7.7.0
-	 * @see Automattic\Jetpack\Connection\Manager::clean_nonces()
-	 *
-	 * @param bool $all whether to clean even non-expired nonces.
-	 */
-	public static function clean_nonces( $all = false ) {
-		_deprecated_function( __METHOD__, 'jetpack-7.7', 'Automattic\\Jetpack\\Connection\\Manager::clean_nonces' );
-		return self::connection()->clean_nonces( $all );
 	}
 
 	/**
@@ -5799,7 +5793,7 @@ endif;
 		$client_blog_id = is_multisite() ? $blog_id : 0;
 
 		if ( ! isset( $clients[ $client_blog_id ] ) ) {
-			$clients[ $client_blog_id ] = new Jetpack_IXR_ClientMulticall( array( 'user_id' => JETPACK_MASTER_USER ) );
+			$clients[ $client_blog_id ] = new Jetpack_IXR_ClientMulticall( array( 'user_id' => Connection_Manager::CONNECTION_OWNER ) );
 			if ( function_exists( 'ignore_user_abort' ) ) {
 				ignore_user_abort( true );
 			}
@@ -6034,7 +6028,7 @@ endif;
 			$this->connection_manager = new Connection_Manager();
 		}
 
-		if ( ! $this->connection_manager->add_nonce( $timestamp, $nonce ) ) {
+		if ( ! Nonce_Handler::add( $timestamp, $nonce ) ) {
 			// De-nonce the nonce, at least for 5 minutes.
 			// We have to reuse this nonce at least once (used the first time when the initial request is made, used a second time when the login form is POSTed)
 			$old_nonce_time = get_option( "jetpack_nonce_{$timestamp}_{$nonce}" );
@@ -6167,7 +6161,18 @@ endif;
 			$local_options = self::get_sync_error_idc_option();
 			// Ensure all values are set.
 			if ( isset( $sync_error['home'] ) && isset( $local_options['home'] ) && isset( $sync_error['siteurl'] ) && isset( $local_options['siteurl'] ) ) {
-				if ( $sync_error['home'] === $local_options['home'] && $sync_error['siteurl'] === $local_options['siteurl'] ) {
+
+				// If the WP.com expected home and siteurl match local home and siteurl it is not valid IDC.
+				if (
+						isset( $sync_error['wpcom_home'] ) &&
+						isset( $sync_error['wpcom_siteurl'] ) &&
+						$sync_error['wpcom_home'] === $local_options['home'] &&
+						$sync_error['wpcom_siteurl'] === $local_options['siteurl']
+				) {
+					$is_valid = false;
+					// Enable migrate_for_idc so that sync actions are accepted.
+					Jetpack_Options::update_option( 'migrate_for_idc', true );
+				} elseif ( $sync_error['home'] === $local_options['home'] && $sync_error['siteurl'] === $local_options['siteurl'] ) {
 					$is_valid = true;
 				}
 			}
@@ -6268,8 +6273,8 @@ endif;
 		}
 
 		/**
-		 * Allows sites to opt in to IDC mitigation which blocks the site from syncing to WordPress.com when the home
-		 * URL or site URL do not match what WordPress.com expects. The default value is either false, or the value of
+		 * Allows sites to opt in for IDC mitigation which blocks the site from syncing to WordPress.com when the home
+		 * URL or site URL do not match what WordPress.com expects. The default value is either true, or the value of
 		 * JETPACK_SYNC_IDC_OPTIN constant if set.
 		 *
 		 * @since 4.3.2
