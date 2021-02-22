@@ -239,6 +239,14 @@ Our Cookie and Consent Banner can help you comply with GDPR. The European Unionâ
 
 == Changelog ==
 
+= 9.3.2 =
+
+* Release date: January 19, 2021
+
+**Enhancements**
+
+* Synchronization: improvements to the way data is synchronized back to WordPress.com.
+
 = 9.3.1 =
 
 * Release date: January 14, 2021
