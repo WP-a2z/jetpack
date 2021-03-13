@@ -47,15 +47,6 @@ class Jetpack_React_Page extends Jetpack_Admin_Page {
 	}
 
 	/**
-	 * Add Jetpack Setup sub-link for eligible users
-	 */
-	function jetpack_add_set_up_sub_nav_item() {
-		if ( $this->show_setup_wizard() ) {
-			add_submenu_page( 'jetpack', __( 'Set up', 'jetpack' ), __( 'Set up', 'jetpack' ), 'jetpack_admin_page', 'jetpack#/setup', '__return_null' );
-		}
-	}
-
-	/**
 	 * Add Jetpack Dashboard sub-link and point it to AAG if the user can view stats, manage modules or if Protect is active.
 	 *
 	 * Works in Dev Mode or when user is connected.
@@ -304,7 +295,6 @@ class Jetpack_React_Page extends Jetpack_Admin_Page {
 				'plan'                       => Jetpack_Plan::get(),
 				'showBackups'                => Jetpack::show_backups_ui(),
 				'showRecommendations'        => Jetpack_Recommendations::is_enabled(),
-				'showSetupWizard'            => $this->show_setup_wizard(),
 				'isMultisite'                => is_multisite(),
 				'dateFormat'                 => get_option( 'date_format' ),
 			),
@@ -327,7 +317,6 @@ class Jetpack_React_Page extends Jetpack_Admin_Page {
 			'externalServicesConnectUrls' => $this->get_external_services_connect_urls(),
 			'calypsoEnv'                  => Jetpack::get_calypso_env(),
 			'products'                    => Jetpack::get_products_for_purchase(),
-			'setupWizardStatus'           => Jetpack_Options::get_option( 'setup_wizard_status', 'not-started' ), // TODO: delete.
 			'recommendationsStep'         => Jetpack_Core_Json_Api_Endpoints::get_recommendations_step()['step'],
 			'isSafari'                    => $is_safari,
 			'doNotUseConnectionIframe'    => Constants::is_true( 'JETPACK_SHOULD_NOT_USE_CONNECTION_IFRAME' ),
@@ -357,16 +346,6 @@ class Jetpack_React_Page extends Jetpack_Admin_Page {
 		$core_api_endpoint = new Jetpack_Core_API_Data();
 		$settings = $core_api_endpoint->get_all_options();
 		return $settings->data;
-	}
-
-
-	/**
-	 * Returns a boolean for whether the Setup Wizard should be displayed or not.
-	 *
-	 * @return bool True if the Setup Wizard should be displayed, false otherwise.
-	 */
-	public function show_setup_wizard() {
-		return Jetpack_Wizard::can_be_displayed();
 	}
 
 	/**
@@ -488,9 +467,11 @@ class Jetpack_React_Page extends Jetpack_Admin_Page {
  * @return array
  */
 function jetpack_current_user_data() {
+	$jetpack_connection = new Connection_Manager( 'jetpack' );
+
 	$current_user   = wp_get_current_user();
 	$is_master_user = $current_user->ID == Jetpack_Options::get_option( 'master_user' );
-	$dotcom_data    = ( new Connection_Manager( 'jetpack' ) )->get_connected_user_data();
+	$dotcom_data    = $jetpack_connection->get_connected_user_data();
 
 	// Add connected user gravatar to the returned dotcom_data.
 	$dotcom_data['avatar'] = ( ! empty( $dotcom_data['email'] ) ?
@@ -504,7 +485,7 @@ function jetpack_current_user_data() {
 		: false );
 
 	$current_user_data = array(
-		'isConnected' => ( new Connection_Manager( 'jetpack' ) )->is_user_connected( $current_user->ID ),
+		'isConnected' => $jetpack_connection->is_user_connected( $current_user->ID ),
 		'isMaster'    => $is_master_user,
 		'username'    => $current_user->user_login,
 		'id'          => $current_user->ID,
@@ -513,6 +494,7 @@ function jetpack_current_user_data() {
 		'permissions' => array(
 			'admin_page'         => current_user_can( 'jetpack_admin_page' ),
 			'connect'            => current_user_can( 'jetpack_connect' ),
+			'connect_user'       => current_user_can( 'jetpack_connect_user' ),
 			'disconnect'         => current_user_can( 'jetpack_disconnect' ),
 			'manage_modules'     => current_user_can( 'jetpack_manage_modules' ),
 			'network_admin'      => current_user_can( 'jetpack_network_admin_page' ),
@@ -520,8 +502,8 @@ function jetpack_current_user_data() {
 			'edit_posts'         => current_user_can( 'edit_posts' ),
 			'publish_posts'      => current_user_can( 'publish_posts' ),
 			'manage_options'     => current_user_can( 'manage_options' ),
-			'view_stats'		 => current_user_can( 'view_stats' ),
-			'manage_plugins'	 => current_user_can( 'install_plugins' )
+			'view_stats'         => current_user_can( 'view_stats' ),
+			'manage_plugins'     => current_user_can( 'install_plugins' )
 									&& current_user_can( 'activate_plugins' )
 									&& current_user_can( 'update_plugins' )
 									&& current_user_can( 'delete_plugins' ),
