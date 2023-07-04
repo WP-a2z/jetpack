@@ -6,6 +6,7 @@
  */
 
 use Automattic\Jetpack\Connection\Client;
+use Automattic\Jetpack\Status;
 
 require_once __DIR__ . '/json-api-config.php';
 require_once __DIR__ . '/sal/class.json-api-links.php';
@@ -429,10 +430,8 @@ abstract class WPCOM_JSON_API_Endpoint {
 					if ( JSON_ERROR_NONE !== json_last_error() ) { // phpcs:ignore PHPCompatibility
 						return null;
 					}
-				} else {
-					if ( $return === null && wp_json_encode( null ) !== $input ) {
-						return null;
-					}
+				} elseif ( $return === null && wp_json_encode( null ) !== $input ) {
+					return null;
 				}
 
 				break;
@@ -635,19 +634,11 @@ abstract class WPCOM_JSON_API_Endpoint {
 							}
 						}
 
-						foreach ( $files as $k => $file ) {
-							if ( ! isset( $file['tmp_name'] ) || ! is_string( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) ) {
-								unset( $files[ $k ] );
-							}
-						}
-						if ( $files ) {
-							$return[ $key ] = $files;
-						}
-					} elseif ( isset( $value['tmp_name'] ) && is_string( $value['tmp_name'] ) && is_uploaded_file( $value['tmp_name'] ) ) {
-						$return[ $key ] = $value;
+						$return[ $key ] = $files;
+						break;
 					}
 				}
-				break;
+				// no break - treat as 'array'.
 			case 'array':
 				// Fallback array -> string.
 				if ( is_string( $value ) ) {
@@ -946,7 +937,6 @@ abstract class WPCOM_JSON_API_Endpoint {
 				);
 				$return[ $key ] = (array) $this->cast_and_filter( $value, $docs, false, $for_output );
 				break;
-
 			case 'visibility':
 				// This is needed to fix a bug in WPAndroid where `public: "PUBLIC"` is sent in place of `public: 1`.
 				if ( 'public' === strtolower( $value ) ) {
@@ -957,7 +947,9 @@ abstract class WPCOM_JSON_API_Endpoint {
 					$return[ $key ] = (int) $value;
 				}
 				break;
-
+			case 'dropdown_page':
+				$return[ $key ] = (array) $this->cast_and_filter( $value, $this->dropdown_page_object_format, false, $for_output );
+				break;
 			default:
 				$method_name = $type['type'] . '_docs';
 				if ( method_exists( 'WPCOM_JSON_API_Jetpack_Overrides', $method_name ) ) {
@@ -1323,7 +1315,7 @@ abstract class WPCOM_JSON_API_Endpoint {
 		}
 
 		if (
-			-1 === (int) get_option( 'blog_public' ) &&
+			( new Status() )->is_private_site() &&
 			/**
 			 * Filter access to a specific post.
 			 *
@@ -1797,7 +1789,7 @@ abstract class WPCOM_JSON_API_Endpoint {
 				}
 				break;
 			case 'display':
-				if ( -1 === (int) get_option( 'blog_public' ) && ! current_user_can( 'read' ) ) {
+				if ( ( new Status() )->is_private_site() && ! current_user_can( 'read' ) ) {
 					return new WP_Error( 'unauthorized', 'User cannot view taxonomy', 403 );
 				}
 				break;
@@ -2210,19 +2202,17 @@ abstract class WPCOM_JSON_API_Endpoint {
 
 				if ( ! $user_can_upload_files ) {
 					$media_id = new WP_Error( 'unauthorized', 'User cannot upload media.', 403 );
+				} elseif ( $this->media_item_is_free_video_mobile_upload_and_too_long( $media_item ) ) {
+					$media_id = new WP_Error( 'upload_video_length', 'Video uploads longer than 5 minutes require a paid plan.', 400 );
 				} else {
-					if ( $this->media_item_is_free_video_mobile_upload_and_too_long( $media_item ) ) {
-						$media_id = new WP_Error( 'upload_video_length', 'Video uploads longer than 5 minutes require a paid plan.', 400 );
+					if ( $force_parent_id ) {
+						$parent_id = absint( $force_parent_id );
+					} elseif ( ! empty( $media_attrs[ $i ] ) && ! empty( $media_attrs[ $i ]['parent_id'] ) ) {
+						$parent_id = absint( $media_attrs[ $i ]['parent_id'] );
 					} else {
-						if ( $force_parent_id ) {
-							$parent_id = absint( $force_parent_id );
-						} elseif ( ! empty( $media_attrs[ $i ] ) && ! empty( $media_attrs[ $i ]['parent_id'] ) ) {
-							$parent_id = absint( $media_attrs[ $i ]['parent_id'] );
-						} else {
-							$parent_id = 0;
-						}
-						$media_id = media_handle_upload( '.api.media.item.', $parent_id );
+						$parent_id = 0;
 					}
+					$media_id = media_handle_upload( '.api.media.item.', $parent_id );
 				}
 				if ( is_wp_error( $media_id ) ) {
 					$errors[ $i ]['file']    = $media_item['name'];
@@ -2232,7 +2222,7 @@ abstract class WPCOM_JSON_API_Endpoint {
 					$media_ids[ $i ] = $media_id;
 				}
 
-				$i++;
+				++$i;
 			}
 			$this->api->trap_wp_die( null );
 			unset( $_FILES['.api.media.item.'] );
@@ -2262,7 +2252,7 @@ abstract class WPCOM_JSON_API_Endpoint {
 					$media_ids[ $i ] = $media_id;
 				}
 
-				$i++;
+				++$i;
 			}
 		}
 
@@ -2330,7 +2320,6 @@ abstract class WPCOM_JSON_API_Endpoint {
 			'media_ids' => $media_ids,
 			'errors'    => $errors,
 		);
-
 	}
 
 	/**
